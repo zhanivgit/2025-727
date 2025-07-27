@@ -3,12 +3,12 @@
 
 // PID 控制参数 (需要根据实际效果进行调整)
 #define KP_X 0.2f
-#define KI_X 0.0f // 暂时归零，以便调优Kp
-#define KD_X 0.0f // 暂时归零，以便调优Kp
+#define KI_X 0.001f // 暂时归零，以便调优Kp
+#define KD_X 0.01f // 暂时归零，以便调优Kp
 
 #define KP_Y 0.2f
-#define KI_Y 0.0f // 暂时归零，以便调优Kp
-#define KD_Y 0.0f // 暂时归零，以便调优Kp
+#define KI_Y 0.001f // 暂时归零，以便调优Kp
+#define KD_Y 0.01f // 暂时归零，以便调优Kp
 
 // 图像中心坐标
 #define CENTER_X 80
