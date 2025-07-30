@@ -62,6 +62,11 @@
     "servo.h": "c",
     "stdint.h": "c",
     "ti_msp_dl_config.h": "c",
-    "stdio.h": "c"
+    "stdio.h": "c",
+    "limits": "c",
+    "clock.h": "c",
+    "math.h": "c",
+    "interrupt.h": "c",
+    "oled_hardware_i2c.h": "c"
   }
 }
