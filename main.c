@@ -14,9 +14,74 @@ volatile int g_current_target[2] = {80, 60}; // 初始化为中心，将被矩�
 volatile int g_laser_coord[2] = {80, 60};    // 初始化为中心
 volatile bool g_new_data_received = false; // 用于OLED刷新
 
+typedef enum {
+    STATE_SEARCHING,
+    STATE_TRACKING
+} ControlState;
+
+volatile ControlState g_control_state = STATE_SEARCHING;
+
 // -- End OpenMV --
 
 uint8_t oled_buffer[32];
+
+void task_one(void)
+{
+    // 持续使用PID让激光点追踪当前目标
+    Servo_TrackPID(g_current_target[0], g_current_target[1], g_laser_coord[0], g_laser_coord[1]);
+
+    // 在OLED上显示调试信息
+    if(g_new_data_received) // 只在收到新数据时刷新OLED，节省资源
+    {
+        g_new_data_received = false;
+        OLED_Clear();
+        OLED_ShowString(0, 0, (uint8_t *)"ONE", 16);
+        OLED_ShowString(0, 2, (uint8_t *)"Target:", 16);
+        OLED_ShowNum(56, 2, g_current_target[0], 3, 16);
+        OLED_ShowNum(88, 2, g_current_target[1], 3, 16);
+        
+        OLED_ShowString(0, 4, (uint8_t *)"Laser:", 16);
+        OLED_ShowNum(56, 4, g_laser_coord[0], 3, 16);
+        OLED_ShowNum(88, 4, g_laser_coord[1], 3, 16);
+    }
+}
+
+void task_two(void)
+{
+    switch (g_control_state) {
+        case STATE_SEARCHING:
+            OLED_Clear();
+            OLED_ShowString(0, 0, (uint8_t *)"TWO", 16);
+            OLED_ShowString(0, 2, (uint8_t *)"Searching...", 16);
+            // X舵机从-30度转到30度
+            for (int i = -30; i <= 30; i++) {
+                Servo_xSetAngle(i);
+                delay_ms(10);
+                if (g_control_state == STATE_TRACKING) break;
+            }
+            break;
+
+        case STATE_TRACKING:
+            // 持续使用PID让激光点追踪当前目标
+            Servo_TrackPID(g_current_target[0], g_current_target[1], g_laser_coord[0], g_laser_coord[1]);
+
+            // 在OLED上显示调试信息
+            if(g_new_data_received) // 只在收到新数据时刷新OLED，节省资源
+            {
+                g_new_data_received = false;
+                OLED_Clear();
+                OLED_ShowString(0, 0, (uint8_t *)"TWO", 16);
+                OLED_ShowString(0, 2, (uint8_t *)"Target:", 16);
+                OLED_ShowNum(56, 2, g_current_target[0], 3, 16);
+                OLED_ShowNum(88, 2, g_current_target[1], 3, 16);
+                
+                OLED_ShowString(0, 4, (uint8_t *)"Laser:", 16);
+                OLED_ShowNum(56, 4, g_laser_coord[0], 3, 16);
+                OLED_ShowNum(88, 4, g_laser_coord[1], 3, 16);
+            }
+            break;
+    }
+}
 
 int main(void)
 {
@@ -30,22 +95,9 @@ int main(void)
 
     while (1)
     {
-        // 持续使用PID让激光点追踪当前目标
-        Servo_TrackPID(g_current_target[0], g_current_target[1], g_laser_coord[0], g_laser_coord[1]);
-
-        // 在OLED上显示调试信息
-        if(g_new_data_received) // 只在收到新数据时刷新OLED，节省资源
-        {
-            g_new_data_received = false;
-            OLED_Clear();
-            OLED_ShowString(0, 0, (uint8_t *)"Target:", 16);
-            OLED_ShowNum(56, 0, g_current_target[0], 3, 16);
-            OLED_ShowNum(88, 0, g_current_target[1], 3, 16);
-            
-            OLED_ShowString(0, 2, (uint8_t *)"Laser:", 16);
-            OLED_ShowNum(56, 2, g_laser_coord[0], 3, 16);
-            OLED_ShowNum(88, 2, g_laser_coord[1], 3, 16);
-        }
+        // 在这里选择要执行的任务
+        task_two();
+        // task_one();
         
         delay_ms(20); // 循环延时
     }
@@ -67,6 +119,7 @@ void UART_OPENMV_INST_IRQHandler(void)
                 if (index == 5) { // 索引5是矩形中心
                     g_current_target[0] = g_uartRxBuffer[2]; // X
                     g_current_target[1] = g_uartRxBuffer[3]; // Y
+                    g_control_state = STATE_TRACKING; // 切换到追踪状态
                 } else if (index == 4) { // 索引4是激光点，更新当前位置
                     g_laser_coord[0] = g_uartRxBuffer[2]; // X
                     g_laser_coord[1] = g_uartRxBuffer[3]; // Y
